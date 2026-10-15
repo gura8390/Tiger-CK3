@@ -96,3 +96,8 @@ The repository includes source, user-facing instructions, and upstream contribut
 ## License
 
 [GPL-3.0-or-later](LICENSE). The original Tiger authors and contributors retain credit for their work.
+
+
+## Related project
+
+[Tiger Stellar](https://github.com/gura8390/Tiger-Stellar) is a separately maintained Stellaris checker with its own rules and validation limits. Its game semantics are not part of this CK3 adaptation.
