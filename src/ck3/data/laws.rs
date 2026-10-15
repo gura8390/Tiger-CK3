@@ -28,17 +28,6 @@ impl LawGroup {
 
 impl DbKind for LawGroup {
     fn add_subitems(&self, _key: &Token, block: &Block, db: &mut Db) {
-        for (key, block) in block.iter_definitions() {
-            for token in block.get_field_values("flag") {
-                db.add_flag(Item::LawFlag, token.clone());
-            }
-            for block in block.get_field_blocks("triggered_flag") {
-                if let Some(token) = block.get_field_value("flag") {
-                    db.add_flag(Item::LawFlag, token.clone());
-                }
-            }
-            db.add(Item::Law, key.clone(), block.clone(), Box::new(Law {}));
-        }
         for token in block.get_field_values("flag") {
             db.add_flag(Item::LawFlag, token.clone());
         }
@@ -47,11 +36,47 @@ impl DbKind for LawGroup {
     fn validate(&self, _key: &Token, block: &Block, data: &Everything) {
         let mut vd = Validator::new(block, data);
 
-        if let Some(token) = vd.field_value("default")
-            && block.get_field_block(token.as_str()).is_none()
-        {
-            let msg = "law not defined in this group";
-            err(ErrorKey::MissingItem).msg(msg).loc(token).push();
+        // Check the final database, after same-ID overrides have been resolved.
+        // _laws.info makes omitted indices zero and permits negative indices.
+        let mut laws: Vec<_> = data.database.iter_key_block(Item::Law).collect();
+        laws.sort_by_key(|(key, _)| key.loc);
+        let mut indices = std::collections::BTreeMap::new();
+        for (key, law) in laws {
+            if law.get_field_value("law_group_type") != Some(_key) {
+                continue;
+            }
+            let index_token = law.get_field_value("index");
+            let index = match index_token {
+                Some(token) => match token.get_integer() {
+                    Some(index) => index,
+                    None => continue, // The law validator reports malformed integers.
+                },
+                None => 0,
+            };
+            let location = index_token.unwrap_or(key);
+            if let Some(previous) = indices.get(&index) {
+                err(ErrorKey::Validation)
+                    .msg(format!("duplicate law index {index} in law group {_key}"))
+                    .loc(location)
+                    .loc_msg(*previous, "another law uses this index (omitted index defaults to 0)")
+                    .push();
+            } else {
+                indices.insert(index, location);
+            }
+        }
+
+        vd.field_item("default", Item::Law);
+        if let Some(token) = block.get_field_value("default") {
+            if let Some(law) = data.database.get_key_block(Item::Law, token.as_str()) {
+                if let Some(group) = law.1.get_field_value("law_group_type") {
+                    if group != _key {
+                        err(ErrorKey::Validation)
+                            .msg("default law belongs to another group")
+                            .loc(token)
+                            .push();
+                    }
+                }
+            }
         }
         vd.field_bool("cumulative");
 
@@ -60,24 +85,44 @@ impl DbKind for LawGroup {
         vd.field_bool("is_treasury_budget_group");
         vd.field_trigger_rooted("can_change_law_group", Tooltipped::Yes, Scopes::Character);
 
-        // The laws. They are validated in the Law class.
-        vd.unknown_block_fields(|_, _| ());
+        vd.field_trigger_rooted("can_have_group", Tooltipped::No, Scopes::Character);
+        vd.field_list_items("required_government_flag", Item::GovernmentFlag);
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct Law {}
 
-impl Law {}
+inventory::submit! {
+    ItemLoader::Normal(GameFlags::Ck3, Item::Law, Law::add)
+}
+impl Law {
+    pub fn add(db: &mut Db, key: Token, block: Block) {
+        db.add(Item::Law, key, block, Box::new(Self {}));
+    }
+}
 
 impl DbKind for Law {
+    fn add_subitems(&self, _key: &Token, block: &Block, db: &mut Db) {
+        for token in block.get_field_values("flag") {
+            db.add_flag(Item::LawFlag, token.clone());
+        }
+        for block in block.get_field_blocks("triggered_flag") {
+            if let Some(token) = block.get_field_value("flag") {
+                db.add_flag(Item::LawFlag, token.clone());
+            }
+        }
+    }
     fn validate(&self, key: &Token, block: &Block, data: &Everything) {
         let mut vd = Validator::new(block, data);
         let mut sc = ScopeContext::new(Scopes::Character, key);
+        vd.req_field("law_group_type");
+        vd.field_item("law_group_type", Item::LawGroup);
+        vd.field_integer("index");
 
         data.verify_exists(Item::Localization, key);
         let loca = format!("{key}_effects");
-        data.verify_exists_implied(Item::Localization, &loca, key);
+        data.mark_used(Item::Localization, &loca);
         let loca = format!("{key}_effects_not_in_prev");
         data.mark_used(Item::Localization, &loca);
         let loca = format!("{key}_subname");
@@ -196,11 +241,12 @@ impl DbKind for Law {
                 "gender_law",
                 &["male_only", "male_preference", "equal", "female_preference", "female_only"],
             );
-            vd.field_choice("faith", &["same_faith", "same_religion", "same_family"]);
+            vd.field_choice("faith", &["same_rite", "same_faith", "same_religion", "same_family"]);
             vd.field_bool("create_primary_tier_titles");
             vd.field_numeric("primary_heir_minimum_share");
             vd.field_bool("exclude_rulers");
             vd.field_bool("limit_to_courtiers");
+            vd.field_bool("resign_outside_realm");
         });
 
         vd.field_script_value_no_breakdown("ai_will_do", &mut sc);

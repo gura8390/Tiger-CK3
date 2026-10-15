@@ -29,6 +29,7 @@ pub fn log_report_json<O: Write + Send>(
                 "length": if pointer.length == 0 { None } else { Some(pointer.length) },
                 "line": errors.cache.get_line(pointer.loc),
                 "tag": pointer.msg,
+                "origin": source_origin(errors, pointer.loc, errors.cache.get_line(pointer.loc)),
             })
         })
         .collect();
@@ -57,4 +58,28 @@ fn stage_desc(stage: FileStage) -> Option<&'static str> {
         FileStage::InGame => Some("in_game"),
         FileStage::NoStage => None,
     }
+}
+
+fn source_origin(errors: &Errors, loc: crate::token::Loc, line: Option<&str>) -> serde_json::Value {
+    if loc.kind.counts_as_vanilla() { return json!({"classification":"native","comparison":"file layer"}); }
+    let Some(root)=&errors.native_origin_root else { return serde_json::Value::Null; };
+    let path=loc.pathname();
+    let Some(parent)=path.parent() else { return json!({"classification":"unresolved"}); };
+    let target=line.unwrap_or("").trim();
+    if target.is_empty() { return json!({"classification":"unresolved"}); }
+    let mut matches=Vec::new();
+    if let Ok(entries)=std::fs::read_dir(root.join(parent)) {
+        for entry in entries.flatten() {
+            let candidate=entry.path();
+            if !candidate.is_file() || candidate.extension()!=path.extension() { continue; }
+            if let Ok(text)=std::fs::read_to_string(&candidate) {
+                for (idx,native_line) in text.lines().enumerate() {
+                    if native_line.trim()==target { matches.push(json!({"path":candidate,"linenr":idx+1})); }
+                }
+            }
+        }
+    }
+    json!({"classification":if matches.is_empty() {"no_same_native_line_in_category"} else {"same_native_line"},
+        "comparison":"exact trimmed source line within the corresponding native directory; not proof of identical definition or engine correctness",
+        "layer":kind_tag(errors,loc.kind),"native_locations":matches})
 }

@@ -90,6 +90,22 @@ struct ValidateArgs {
     /// Load a JSON file of reports to remove from the output.
     #[clap(long)]
     suppress: Option<PathBuf>,
+    /// Optional CI failure threshold. Legacy zero exit behavior is preserved when omitted.
+    #[clap(long, value_parser = ["error", "warning", "fatal"])]
+    fail_on: Option<String>,
+    /// Write checker revision, game version, fingerprints and check scope to a separate JSON file.
+    #[clap(long)]
+    metadata_json: Option<PathBuf>,
+    /// Annotate JSON locations with exact native source-line matches in the same category.
+    #[clap(long)]
+    native_origin: bool,
+    /// Audit state-triggered commands/effects; scheduling remains an engine validation task.
+    #[clap(long)]
+    audit_gui_state: bool,
+    /// Optional CK3 government acquisition policy JSON; never implies engine simulation.
+    #[cfg(feature = "ck3")]
+    #[clap(long)]
+    government_policy: Option<PathBuf>,
 }
 
 /// Run the main tiger application.
@@ -279,6 +295,9 @@ pub fn run(
                 set_show_loaded_mods(true);
             }
 
+            if args.native_origin {
+                if let Some(game)=args.game.as_ref() { tiger_lib::set_native_origin_root(if game.join("game").is_dir() {game.join("game")} else {game.clone()}); }
+            }
             everything.load_all();
             everything.validate_all();
             everything.check_rivers();
@@ -292,6 +311,15 @@ pub fn run(
                 everything.check_unused();
             }
 
+            #[cfg(feature = "ck3")]
+            if let Some(path) = args.government_policy.as_deref() { everything.audit_government_policy(path)?; }
+            if let Some(path) = args.metadata_json.as_deref() {
+                everything.write_validation_metadata(path, current_version, args.game.as_deref(), version)?;
+            }
+            if args.audit_gui_state { everything.audit_gui_state_scheduling(); }
+            let exit_code = args.fail_on.as_ref().map(|level| tiger_lib::report_exit_code(match level.as_str() {
+                "warning" => tiger_lib::Severity::Warning, "fatal" => tiger_lib::Severity::Fatal, _ => tiger_lib::Severity::Error,
+            })).unwrap_or(0);
             let any_printed = emit_reports(&mut output, args.json, args.consolidate, true);
 
             if !args.json && !any_printed {
@@ -300,6 +328,7 @@ pub fn run(
 
             // Properly dropping `everything` takes a noticeable amount of time, and we're exiting anyway.
             forget(everything);
+            if exit_code != 0 { std::process::exit(exit_code); }
             Ok(())
         }
     }

@@ -162,7 +162,7 @@ impl Effect {
             if self.scope_override.is_some() {
                 our_sc.set_no_warn(true);
             }
-            self.cache.insert(
+            self.cache.begin(
                 key,
                 &[],
                 tooltipped,
@@ -236,7 +236,7 @@ impl Effect {
             }
             // Insert the dummy sc before continuing. That way, if we recurse, we'll hit
             // that dummy context instead of macro-expanding again.
-            self.cache.insert(
+            self.cache.begin(
                 key,
                 args,
                 tooltipped,

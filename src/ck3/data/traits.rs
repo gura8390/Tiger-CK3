@@ -198,6 +198,8 @@ impl Trait {
         vd.field_item("category", Item::TraitCategory);
         vd.multi_field_validated_block("culture_modifier", validate_culture_modifier);
         vd.multi_field_validated_block("faith_modifier", validate_faith_modifier);
+        vd.multi_field_validated_block("rite_modifier", validate_faith_modifier);
+        vd.field_bool("clergy");
         vd.field_item("culture_succession_prio", Item::CultureParameter);
         vd.multi_field_validated_block("triggered_opinion", validate_triggered_opinion);
 
@@ -354,6 +356,7 @@ fn validate_trait_track(key: &Token, block: &Block, data: &Everything, warn_key:
         let mut vd = Validator::new(block, data);
         vd.multi_field_validated_block("culture_modifier", validate_culture_modifier);
         vd.multi_field_validated_block("faith_modifier", validate_faith_modifier);
+        vd.multi_field_validated_block("rite_modifier", validate_faith_modifier);
         validate_modifs(block, data, ModifKinds::Character, vd);
     });
     // let modif = format!("{key}_xp_degradation_mult");

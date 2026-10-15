@@ -28,10 +28,11 @@ impl LeaseContract {
 impl DbKind for LeaseContract {
     fn validate(&self, key: &Token, block: &Block, data: &Everything) {
         let mut vd = Validator::new(block, data);
-        if key.is("theocracy_lease") {
+        if key.is("theocracy_lease") || key.is("ecclesiastical_lease") {
             vd.req_field("hierarchy");
             vd.field_validated_block("hierarchy", |block, data| {
                 let mut vd = Validator::new(block, data);
+                vd.field_choice("type", &["vassal", "clerical_region"]);
                 vd.field_trigger_rooted("ruler_valid", Tooltipped::No, Scopes::Character);
                 vd.field_trigger_builder("liege_or_vassal_valid", Tooltipped::No, |key| {
                     let mut sc = ScopeContext::new(Scopes::Character, key);
@@ -51,10 +52,23 @@ impl DbKind for LeaseContract {
         vd.field_integer("ruler_share_min_opinion_from_lessee");
         vd.field_choice("hook_strength_max_opinion", &["none", "any", "strong"]);
 
+        for field in ["tax_split", "levy_split"] {
+            vd.field_validated_block(field, |block, data| {
+                let mut vd = Validator::new(block, data);
+                let mut sc = ScopeContext::new(Scopes::Character, key);
+                for name in ["lessee", "ruler", "lease_liege", "top_lease_liege"] {
+                    sc.define_name(name, Scopes::Character, key);
+                }
+                for share in ["lease_liege", "top_lease_liege_direct", "ruler"] {
+                    vd.field_script_value(share, &mut sc);
+                    vd.field_script_value(&format!("{share}_max"), &mut sc);
+                }
+            });
+        }
         for field in &["tax", "levy"] {
             vd.field_validated_block(field, |block, data| {
                 let mut vd = Validator::new(block, data);
-                if key.is("theocracy_lease") {
+                if key.is("theocracy_lease") || key.is("ecclesiastical_lease") {
                     vd.field_integer_range("lease_liege", 0..=100);
                 } else {
                     // Technically it just requires a hierarchy definition,

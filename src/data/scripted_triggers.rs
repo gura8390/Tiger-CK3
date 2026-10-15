@@ -159,7 +159,7 @@ impl Trigger {
             if self.scope_override.is_some() {
                 our_sc.set_no_warn(true);
             }
-            self.cache.insert(key, &[], tooltipped, negated, our_sc.clone());
+            self.cache.begin(key, &[], tooltipped, negated, our_sc.clone());
             let vd = Validator::new(&self.block, data);
             validate_trigger_internal(
                 Lowercase::empty(),
@@ -219,7 +219,7 @@ impl Trigger {
             }
             // Insert the dummy sc before continuing. That way, if we recurse, we'll hit
             // that dummy context instead of macro-expanding again.
-            self.cache.insert(key, args, tooltipped, negated, our_sc.clone());
+            self.cache.begin(key, args, tooltipped, negated, our_sc.clone());
             let vd = Validator::new(&block, data);
             validate_trigger_internal(
                 Lowercase::empty(),

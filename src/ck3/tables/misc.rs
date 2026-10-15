@@ -190,6 +190,7 @@ pub const CUSTOM_RELIGION_LOCAS: &[&str] = &[
     "PriestNeuter",
     "PriestNeuterPlural",
     "ReligiousHeadName",
+    "ReligiousHeadNameFemale",
     "ReligiousHeadTitleName",
     "ReligiousSymbol",
     "ReligiousSymbol2",
@@ -229,6 +230,7 @@ pub const CUSTOM_RELIGION_LOCAS: &[&str] = &[
 /// LAST UPDATED CK3 VERSION 1.19.0
 /// Taken from `has_dlc_feature` in triggers.log
 pub const DLC_FEATURES_CK3: &[&str] = &[
+    "by_god_alone",
     "garments_of_the_hre",
     "fashion_of_the_abbasid_court",
     "the_northern_lords",
@@ -386,6 +388,7 @@ pub const DLC_MUSIC: &[&str] = &[
 // LAST UPDATED CK3 VERSION 1.13.0.1
 // taken from the governments .info file
 pub const GOVERNMENT_RULES: &[&str] = &[
+    "treasury_vassal_development",
     "create_cadet_branches",
     "religious",
     "court_generate_spouses",

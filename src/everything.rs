@@ -1627,3 +1627,57 @@ mod benchmark {
             });
     }
 }
+
+impl Everything {
+    pub fn audit_gui_state_scheduling(&self) { self.gui.audit_state_scheduling(); }
+
+    /// Optional provenance manifest for CI. Hash only indexed text inputs, never art assets.
+    pub fn write_validation_metadata(&self, path: &std::path::Path, checker: &str, game: Option<&std::path::Path>, supported: &str) -> std::io::Result<()> {
+        fn fingerprint(bytes: &[u8]) -> String {
+            let mut hash=0xcbf29ce484222325u64;
+            for byte in bytes { hash=(hash ^ u64::from(*byte)).wrapping_mul(0x100000001b3); }
+            format!("{hash:016x}")
+        }
+        let mut files=std::collections::BTreeMap::new();
+        for key in self.fileset.iter_keys() {
+            let input=key.loc.fullpath();
+            if matches!(input.extension().and_then(|s| s.to_str()), Some("txt"|"gui"|"yml"|"info"|"json")) {
+                if let Ok(bytes)=std::fs::read(input) { files.insert(input.display().to_string(),fingerprint(&bytes)); }
+            }
+        }
+        let mut owners=std::collections::BTreeMap::new();
+        #[cfg(feature = "ck3")]
+        for item in [Item::GovernmentType,Item::GuiType,Item::Event,Item::EventNamespace,Item::CharacterInteractionCategory,Item::Localization] {
+            let mut entries=std::collections::BTreeMap::<String,Vec<serde_json::Value>>::new();
+            for key in self.iter_keys(item) {
+                entries.entry(key.as_str().to_string()).or_default().push(serde_json::json!({"file":key.loc.fullpath(),"line":key.loc.line,"layer":format!("{:?}",key.loc.kind)}));
+            }
+            owners.insert(item.to_string(),entries);
+        }
+        let input_hash=fingerprint(&serde_json::to_vec(&files).map_err(std::io::Error::other)?);
+        let version=game.and_then(|g| crate::launcher_settings::get_version_from_launcher(g).ok());
+        let value=serde_json::json!({"checker_version":checker,"adaptation_revision":"1.20.1-maintenance-r3","game_version":version,"supported_game_version":supported,
+            "fingerprint_algorithm":"fnv1a-64 (change detection, not cryptographic authentication)","rules_fingerprint":env!("TIGER_RULES_FINGERPRINT"),"input_fingerprint":input_hash,
+            "scope":"final indexed text inputs; art assets excluded; bounded static validation","input_files":files,"final_definition_sources":owners,"engine_accepted":false});
+        if let Some(parent)=path.parent() { std::fs::create_dir_all(parent)?; }
+        serde_json::to_writer_pretty(std::fs::File::create(path)?,&value).map_err(std::io::Error::other)
+    }
+
+    #[cfg(feature = "ck3")]
+    pub fn audit_government_policy(&self, path: &std::path::Path) -> std::io::Result<()> {
+        use crate::report::{warn,ErrorKey};
+        let value:serde_json::Value=serde_json::from_slice(&std::fs::read(path)?).map_err(std::io::Error::other)?;
+        let policies=value.get("governments").and_then(serde_json::Value::as_object).ok_or_else(|| std::io::Error::other("government policy requires governments object"))?;
+        for (name, policy) in policies {
+            let policy=policy.as_str().ok_or_else(|| std::io::Error::other("government policy must be a string"))?;
+            if !matches!(policy,"open"|"gated"|"player_only") { return Err(std::io::Error::other("policy must be open, gated or player_only")); }
+            if let Some((key,block))=self.database.get_key_block(Item::GovernmentType,name) {
+                if policy!="open" && !block.has_key("can_get_government") {
+                    warn(ErrorKey::GovernmentPolicy).msg(format!("government `{name}` policy `{policy}` has no can_get_government gate"))
+                        .info("Decision entry restrictions do not restrict engine government selection. Review fallback, is_mechanic_type_default and use_as_base_on_landed/rank_up; this lint does not simulate selection.").loc(key).push();
+                }
+            } else { return Err(std::io::Error::other(format!("unknown government in project policy: {name}"))); }
+        }
+        Ok(())
+    }
+}

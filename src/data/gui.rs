@@ -245,6 +245,26 @@ impl Gui {
         self.widget_names.iter()
     }
 
+    /// Optional audit: a valid function name does not prove state scheduling.
+    pub fn audit_state_scheduling(&self) {
+        fn walk(block: &Block) {
+            for (key,child) in block.iter_definitions() {
+                if key.is("state") {
+                    if let Some(start)=child.get_field_value("on_start") {
+                        if start.as_str().contains("PostCommand(") || start.as_str().contains(".Execute(") {
+                            warn(ErrorKey::GuiStateRuntime).msg("GUI state issues a command/effect; runtime scheduling requires verification")
+                                .info("Static checking does not prove a completion guard, absence of repeat loops, actor-switch/save-load behavior, or same-frame completion of queued commands. Verify these in the engine even when trigger_when and function signatures are valid.")
+                                .loc(start).loc_msg(key,"state transition").push();
+                        }
+                    }
+                }
+                walk(child);
+            }
+        }
+        for items in self.files.values() { for item in items { if !item.key.loc.kind.counts_as_vanilla() { walk(&item.block); } } }
+        for item in self.types.values() { if !item.key.loc.kind.counts_as_vanilla() { walk(&item.block); } }
+    }
+
     pub fn validate(&self, data: &Everything) {
         for items in self.files.values() {
             for item in items {

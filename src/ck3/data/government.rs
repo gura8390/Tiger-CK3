@@ -13,6 +13,7 @@ use crate::token::Token;
 use crate::tooltipped::Tooltipped;
 use crate::validate::validate_color;
 use crate::validator::Validator;
+use crate::report::{err, ErrorKey};
 
 #[derive(Clone, Debug)]
 pub struct Government {}
@@ -38,6 +39,16 @@ impl DbKind for Government {
 
     fn validate(&self, key: &Token, block: &Block, data: &Everything) {
         let mut vd = Validator::new(block, data);
+        let registration = data.defines.government_registration();
+        if !registration.is_some_and(|(_, b)| b.iter_values().any(|t| t.is(key.as_str()))) {
+            let report = err(ErrorKey::GovernmentRegistration)
+                .msg(format!("government `{key}` is missing from final NGovernment.GOVERNMENT_TYPES"))
+                .info(format!("Final registration load order: {}. The engine requires preregistered government modifiers.", data.defines.government_registration_sources()));
+            if let Some((winner, _)) = registration {
+                if winner.loc.kind > key.loc.kind { report.loc(winner).loc_msg(key,"government definition").push(); }
+                else { report.loc(key).loc_msg(winner,"final registration list").push(); }
+            } else { report.loc(key).push(); }
+        }
 
         // let modif = format!("{key}_levy_contribution_add");
         // data.verify_exists_implied(Item::ModifierFormat, &modif, key);
@@ -201,6 +212,13 @@ impl DbKind for Government {
         });
 
         vd.field_list_items("compatible_government_type_succession", Item::GovernmentType);
+        vd.field_list_items("possible_grant_vassal_governments", Item::GovernmentType);
+        vd.field_script_value_no_breakdown_builder("grant_vassal_ai_will_do", |key| {
+            let mut sc = ScopeContext::new(Scopes::Character, key);
+            sc.define_name("title", Scopes::LandedTitle, key);
+            sc.define_list("target_titles", Scopes::LandedTitle, key);
+            sc
+        });
 
         vd.field_validated_block("ai", validate_ai);
         vd.multi_field_validated_block("character_modifier", |block, data| {

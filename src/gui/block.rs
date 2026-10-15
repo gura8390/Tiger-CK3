@@ -38,6 +38,8 @@ enum GuiItem {
 /// A processed version of a [`Block`] meant for `.gui` files.
 #[derive(Debug, Clone, Default)]
 pub struct GuiBlock {
+    key: Option<Token>,
+    widget_kind: Option<BuiltinWidget>,
     /// The widget's ultimate base type or complex property type, if known.
     /// This determines which properties are valid in this block.
     container: Option<PropertyContainer>,
@@ -86,6 +88,8 @@ impl GuiBlock {
 
         // Blank slate to work on
         let mut gui = Self {
+            key: match from { GuiBlockFrom::WidgetKey(k) | GuiBlockFrom::TypeBase(k) | GuiBlockFrom::TypeWrapper(k) => Some(k.clone()), _ => None },
+            widget_kind: match from { GuiBlockFrom::WidgetKey(k) | GuiBlockFrom::TypeBase(k) | GuiBlockFrom::TypeWrapper(k) => types.get(&Lowercase::new(k.as_str())).and_then(|t| t.builtin(types)).or_else(|| BuiltinWidget::builtin_current_game(&Lowercase::new(k.as_str()))), _ => None },
             container: None,
             base: None,
             items: Vec::new(),
@@ -347,9 +351,19 @@ impl GuiBlock {
                 GuiItem::Subst(_, gui_block) => {
                     gui_block.validate(container, data, dc);
                 }
-                GuiItem::Widget(gui_block)
-                | GuiItem::ComplexProperty(gui_block)
-                | GuiItem::WidgetProperty(gui_block) => {
+                GuiItem::Widget(gui_block) => {
+                    if Game::is_ck3()
+                        && matches!(self.widget_kind,Some(BuiltinWidget::container | BuiltinWidget::flowcontainer))
+                        && matches!(gui_block.widget_kind,Some(BuiltinWidget::hbox | BuiltinWidget::vbox)) {
+                        if let (Some(parent),Some(child))=(&self.key,&gui_block.key) {
+                            err(ErrorKey::GuiStructure).msg(format!("{parent} cannot have {child} as a direct child"))
+                                .info("The CK3 engine rejects hbox/vbox directly under (flow)container, including inherited types. Insert an intermediate widget or use flowcontainer with direction=horizontal/vertical.")
+                                .loc(child).loc_msg(parent,"parent container").push();
+                        }
+                    }
+                    gui_block.validate(None, data, dc);
+                }
+                GuiItem::ComplexProperty(gui_block) | GuiItem::WidgetProperty(gui_block) => {
                     gui_block.validate(None, data, dc);
                 }
                 GuiItem::ActionTooltip(gui_block) => {

@@ -249,6 +249,7 @@ impl Title {
         vd.field_bool("can_be_named_after_dynasty");
         vd.field_bool("landless");
         vd.field_bool("require_landless");
+        vd.field_item("dlc_feature", Item::DlcFeature);
         vd.field_bool("no_automatic_claims");
         vd.field_bool("always_follows_primary_heir");
         vd.field_bool("destroy_if_invalid_heir");

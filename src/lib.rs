@@ -39,7 +39,7 @@ pub use crate::modfile::ModFile;
 pub use crate::report::{
     Confidence, LogReportMetadata, LogReportPointers, PointedMessage, Severity,
     add_loaded_mod_root, disable_ansi_colors, emit_reports, log, set_output_style,
-    set_show_loaded_mods, set_show_vanilla, suppress_from_json, take_reports,
+    set_show_loaded_mods, set_show_vanilla, suppress_from_json, take_reports, report_exit_code, set_native_origin_root,
 };
 pub use crate::token::{Loc, Token};
 

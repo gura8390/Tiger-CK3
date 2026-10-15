@@ -51,6 +51,7 @@ pub struct Errors<'a> {
     pub(crate) loaded_dlcs_labels: Vec<String>,
 
     pub(crate) cache: Cache,
+    pub(crate) native_origin_root: Option<PathBuf>,
 
     /// Determines whether a report should be printed.
     pub(crate) filter: ReportFilter,
@@ -427,3 +428,17 @@ pub fn set_show_loaded_mods(v: bool) {
 pub(crate) fn set_predicate(predicate: FilterRule) {
     Errors::get_mut().filter.predicate = predicate;
 }
+
+/// Exit policy uses the same visible reports as output and never removes diagnostics.
+pub fn report_exit_code(threshold: super::Severity) -> i32 {
+    let errors=Errors::get();
+    let reports=errors.flatten_reports(false);
+    if reports.iter().any(|(r,_,_)| matches!(r.key, ErrorKey::ParseError | ErrorKey::BraceError | ErrorKey::ReadError)) { return 3; }
+    match reports.iter().map(|(r,_,_)| r.severity).max() {
+        Some(severity) if severity >= threshold => if severity >= super::Severity::Error { 1 } else { 2 },
+        _ => 0,
+    }
+}
+
+/// Enable bounded, explicit source-line comparison for JSON diagnostics.
+pub fn set_native_origin_root(root: PathBuf) { Errors::get_mut().native_origin_root=Some(root); }

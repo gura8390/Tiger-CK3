@@ -38,6 +38,10 @@ impl DbKind for ArtifactSlot {
         data.verify_exists(Item::Localization, key);
         vd.field_item("type", Item::ArtifactSlotType);
         vd.field_choice("category", &["inventory", "court"]);
+        vd.field_bool("holy_site");
+        vd.field_bool("allow_any_type_or_category");
+        vd.field_trigger_rooted("available", Tooltipped::No, Scopes::Character);
+        vd.field_trigger_rooted("available_holy_site", Tooltipped::No, Scopes::HolySite);
         if let Some(category) = block.get_field_value("category") {
             // TODO: this can probably be simplified
             if category.is("inventory") {
@@ -98,6 +102,7 @@ impl DbKind for ArtifactTemplate {
 
         vd.field_trigger("can_equip", Tooltipped::Yes, &mut sc);
         vd.field_trigger("can_benefit", Tooltipped::Yes, &mut sc);
+        vd.field_trigger("is_holy_relic", Tooltipped::Yes, &mut sc);
         vd.field_trigger("can_reforge", Tooltipped::Yes, &mut sc);
         vd.field_trigger("can_repair", Tooltipped::Yes, &mut sc);
 

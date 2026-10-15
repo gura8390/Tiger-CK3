@@ -462,6 +462,34 @@ pub fn validate_inside_iterator(
     vd: &mut Validator,
     tooltipped: Tooltipped,
 ) {
+    #[cfg(feature = "ck3")]
+    if Game::is_ck3() {
+        if name == "rite_tenet" {
+            vd.field_choice("status", &["unknown", "known", "prohibited", "permitted", "core"]);
+        }
+        if name == "character_tenet" || name == "character_doctrine" {
+            vd.field_target("rite_filter", sc, Scopes::Rite);
+            vd.field_target("faith_filter", sc, Scopes::Faith);
+            vd.field_choice("knowledge_filter", &["known", "unknown"]);
+            if name == "character_tenet" {
+                vd.field_choice("status", &["unknown", "known", "prohibited", "permitted", "core"]);
+            }
+        } else {
+            vd.ban_field("knowledge_filter", || "character_tenet or character_doctrine iterators");
+        }
+    }
+    #[cfg(feature = "ck3")]
+    if Game::is_ck3() && (name == "desired_tenet" || name == "undesired_tenet") {
+        vd.field_integer("selection_count");
+        vd.field_bool("only_positive");
+        vd.field_bool("only_negative");
+        vd.field_bool("known_tenets");
+        vd.field_script_value("threshold", sc);
+    }
+    #[cfg(feature = "ck3")]
+    if Game::is_ck3() && name == "ruler" {
+        vd.field_target("faith_filter", sc, Scopes::Faith);
+    }
     // Docs say that all three can take either list or variable, but global and local lists must be variable lists.
     #[cfg(feature = "jomini")]
     if name == "in_list" {
@@ -996,6 +1024,27 @@ pub fn validate_scope_chain(
 }
 
 pub fn validate_ifelse_sequence(block: &Block, key_if: &str, key_elseif: &str, key_else: &str) {
+    // Narrow CK3 engine-confirmed post-validation failure. Do not require a
+    // terminal else for ordinary trigger chains or effect if/else_if chains.
+    if Game::is_ck3() && key_if == "trigger_if" {
+        let mut terminal: Option<&Token> = None;
+        for (key, branch) in block.iter_definitions() {
+            if key.is(key_elseif) {
+                terminal = if branch.has_key("limit") && branch.get_field_bool("debug_only") == Some(true) && branch.num_items() == 2 { Some(key) } else { None };
+            } else if key.is(key_if) || key.is(key_else) {
+                terminal = None;
+            } else if let Some(previous) = terminal.take() {
+                err(ErrorKey::IfElse).msg("unterminated trigger_else_if chain with terminal debug_only-only branch")
+                    .info("CK3 1.20.1 rejected this pattern during PostValidate with 'trigger_else_if with no trigger_else'. Supply an explicit trigger_else result. Ordinary else_if chains are not covered by this narrow rule.")
+                    .loc(previous).push();
+            }
+        }
+        if let Some(previous) = terminal {
+            err(ErrorKey::IfElse).msg("unterminated trigger_else_if chain with terminal debug_only-only branch")
+                .info("CK3 1.20.1 engine-confirmed pattern; supply an explicit trigger_else result. This is not a general requirement for all else_if chains.")
+                .loc(previous).push();
+        }
+    }
     let mut seen_if = false;
     for (key, block) in block.iter_definitions() {
         if key.is(key_if) {

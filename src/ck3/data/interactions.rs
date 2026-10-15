@@ -37,6 +37,7 @@ impl DbKind for CharacterInteraction {
         // You're expected to use scope:actor and scope:recipient instead of root
         let mut sc = ScopeContext::new(Scopes::None, key);
         sc.define_name("actor", Scopes::Character, key);
+        sc.define_name("puppet_or_actor", Scopes::Character, key);
         sc.define_name("recipient", Scopes::Character, key);
         sc.define_name("hook", Scopes::Bool, key);
         // TODO: figure out when these are available
@@ -342,6 +343,18 @@ impl DbKind for CharacterInteraction {
             "target_type",
             &["artifact", "title", "men_at_arms", "court_position_type", "count"],
         );
+        vd.field_choice(
+            "target_source",
+            &[
+                "actor",
+                "secondary_actor",
+                "recipient",
+                "secondary_recipient",
+                "intermediary",
+                "puppet_or_actor",
+            ],
+        );
+        vd.field_bool("show_all_targets");
         vd.field_value("target_filter"); // TODO
 
         // root is the character being picked

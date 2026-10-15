@@ -2,6 +2,11 @@
 
 use anyhow::Result;
 
+fn numeric_version(version: &str) -> Result<Vec<u64>> {
+    version.split_whitespace().next().unwrap_or("").split('.')
+        .map(|part| part.parse().map_err(Into::into)).collect()
+}
+
 /// Compare the game version tiger was built for to the detected game version, and warn
 /// on stderr if tiger is too old or the game is too old.
 pub fn warn_versions(
@@ -9,6 +14,10 @@ pub fn warn_versions(
     tiger_game_version: &str,
     launcher_game_version: &str,
 ) -> Result<()> {
+    let differs = numeric_version(tiger_game_version)? != numeric_version(launcher_game_version)?;
+    if differs {
+        eprintln!("WARNING: game version mismatch; validation continues. Compatibility is not guaranteed.");
+    }
     let components: Vec<_> = tiger_game_version.split(' ').collect();
     let tiger_version_components: Vec<_> = components[0].split('.').collect();
     let tiger_major: i64 = tiger_version_components.first().unwrap_or(&"0").parse()?;
@@ -49,9 +58,27 @@ pub fn warn_versions(
             "but the slightly older version {launcher_game_version} was detected in the game files."
         );
         eprintln!("This is probably okay, but there may be some erroneous reports.");
+    } else if differs {
+        eprintln!("Tiger was made for {tiger_game} version {tiger_game_version}, but game build {launcher_game_version} differs. Validation continues.");
     } else {
         eprintln!("Tiger was made for {tiger_game} version {tiger_game_version},");
         eprintln!("which matches the detected game version {launcher_game_version}.");
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn full_version_includes_hotfix_component() {
+        assert_ne!(numeric_version("1.20.0.4").unwrap(), numeric_version("1.20.0.5").unwrap());
+        assert_eq!(numeric_version("1.20.1 (Crozier)").unwrap(), numeric_version("1.20.1").unwrap());
+    }
+    #[test]
+    fn mismatched_versions_never_block_validation() {
+        for version in ["1.19.0", "1.20.0.4", "1.20.2", "1.21.0", "2.0.0"] {
+            assert!(warn_versions("CK3", "1.20.1 (Crozier)", version).is_ok());
+        }
+    }
 }

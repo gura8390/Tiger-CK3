@@ -90,6 +90,8 @@ const DATATYPE_AND_SCOPE: &[(Datatype, Scopes)] = &[
     (Ck3(Combat), Scopes::Combat),
     (Ck3(CombatSide), Scopes::CombatSide),
     (Ck3(Faith), Scopes::Faith),
+    (Ck3(Rite), Scopes::Rite),
+    (Ck3(TenetType), Scopes::Tenet),
     (Ck3(GreatHolyWar), Scopes::GreatHolyWar),
     (Ck3(Religion), Scopes::Religion),
     (Ck3(War), Scopes::War),

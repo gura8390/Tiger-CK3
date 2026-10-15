@@ -848,4 +848,9 @@
     ("WatchWindowsEnabled", Args::Args(&[]), bool),
     ("WeeksPerYear", Args::Args(&[]), int32),
     ("WhyCantTickDay", Args::Args(&[]), CString),
+    // CK3 1.20.1: vanilla title window and religion GUI interfaces.
+    ("And3", Args::Args(&[DType(bool), DType(bool), DType(bool)]), bool),
+    ("And5", Args::Args(&[DType(bool), DType(bool), DType(bool), DType(bool), DType(bool)]), bool),
+    ("Nor", Args::Args(&[DType(bool), DType(bool)]), bool),
+    ("Nor4", Args::Args(&[DType(bool), DType(bool), DType(bool), DType(bool)]), bool),
 ]

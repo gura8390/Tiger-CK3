@@ -16,6 +16,9 @@ pub static DEFINES_MAP: LazyLock<TigerHashMap<&'static str, DefineType>> = LazyL
 // LAST UPDATED CK3 VERSION 1.16.2.3
 // See common/defines. Remember the ones in ../jomini/
 const DEFINES: &[(&str, DefineType)] = &[
+    ("NRite|RITE_CREATION_DESCRIPTION_MAX_LENGTH", DefineType::Integer),
+    ("NMapIcon|RELIGIOUS_HEADS_VISIBLE_ZOOM_STEPS", DefineType::NumberList),
+    ("NJominiPortraits|PATTERN_MASK_MIN_SIZE_PER_QUALITY", DefineType::IntegerList),
     ("NAI|ADMIN_REALM_TOP_LIEGE_DEFENSIVE_WAR_INFLUENCE_SPENDING_FLOOR", DefineType::Number),
     ("NAI|ADMIN_REALM_TOP_LIEGE_OFFENSIVE_WAR_INFLUENCE_SPENDING_FLOOR", DefineType::Number),
     ("NAI|ADMIN_REALM_TOTAL_POWER_ADJUSTMENT_TOP_LIEGE", DefineType::Number),

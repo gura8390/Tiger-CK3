@@ -7,6 +7,7 @@ use crate::game::GameFlags;
 use crate::item::{Item, ItemLoader};
 use crate::modif::validate_modifs;
 use crate::report::{ErrorKey, fatal, warn};
+use crate::scopes::Scopes;
 use crate::token::Token;
 use crate::validator::Validator;
 
@@ -26,7 +27,7 @@ impl HolySite {
 impl DbKind for HolySite {
     fn add_subitems(&self, _key: &Token, block: &Block, db: &mut Db) {
         if let Some(block) = block.get_field_block("parameters") {
-            for token in block.iter_values() {
+            for (token, _) in block.iter_assignments() {
                 db.add_flag(Item::HolySiteParameter, token.clone());
             }
         }
@@ -40,7 +41,7 @@ impl DbKind for HolySite {
         let loca = format!("holy_site_{key}_effects");
         data.mark_used(Item::Localization, &loca);
 
-        vd.req_field("county");
+        // Generic holy-site types may have no fixed location in 1.20.
         vd.field_item("county", Item::Title);
         vd.field_item("barony", Item::Title);
 
@@ -61,21 +62,38 @@ impl DbKind for HolySite {
             }
         }
 
-        vd.field_list("parameters");
-
-        vd.multi_field_validated_block("character_modifier", |block, data| {
+        vd.field_validated_block("parameters", |block, data| {
             let mut vd = Validator::new(block, data);
-            if let Some(token) = vd.field_value("name") {
-                data.verify_exists(Item::Localization, token);
-            } else {
-                let loca = format!("holy_site_{key}_effects");
-                data.verify_exists_implied(Item::Localization, &loca, key);
-            }
-            validate_modifs(block, data, ModifKinds::Character, vd);
+            vd.unknown_value_fields(|_, value| {
+                if !["yes", "no", "YES", "NO"].contains(&value.as_str()) {
+                    crate::report::err(ErrorKey::Validation)
+                        .msg("expected yes or no")
+                        .loc(value)
+                        .push();
+                }
+            });
         });
+        for field in ["faith_character_modifier", "county_holder_character_modifier"] {
+            vd.field_validated_block(field, |block, data| {
+                let vd = Validator::new(block, data);
+                validate_modifs(block, data, ModifKinds::Character, vd);
+            });
+        }
+        for (field, kinds) in [
+            ("faith_character_modifier_scaled", ModifKinds::Character),
+            ("county_modifier_scaled", ModifKinds::County),
+        ] {
+            vd.multi_field_validated_block(field, |block, data| {
+                let mut vd = Validator::new(block, data);
+                vd.req_field("scale");
+                vd.field_script_value_no_breakdown_rooted("scale", Scopes::HolySite);
+                validate_modifs(block, data, kinds, vd);
+            });
+        }
 
         // undocumented
 
         vd.field_bool("is_active");
+        vd.field_bool("is_dynamic");
     }
 }

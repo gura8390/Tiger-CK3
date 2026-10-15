@@ -492,6 +492,29 @@ pub fn validate_trigger_key_bv(
                     data.script_values.validate_call(part, data, sc);
                     sc.replace(Scopes::Value, part.clone());
                 } else if let Some((inscopes, outscope)) = scope_to_scope(part, sc.scopes(data)) {
+                    #[cfg(feature = "ck3")]
+                    if Game::is_ck3()
+                        && part_flags.contains(PartFlags::Last)
+                        && let Some((trigger_inscopes, trigger @ Trigger::CompareChoiceOrNumber(_))) =
+                            scope_trigger(part, data)
+                    {
+                        // A terminal comparison may have enum operands (rarity_level),
+                        // while the same name remains a numeric transition in a chain.
+                        validate_inscopes(part_flags, part, trigger_inscopes, sc, data);
+                        sc.close();
+                        side_effects |= match_trigger_bv(
+                            &trigger,
+                            &part.clone(),
+                            cmp,
+                            bv,
+                            data,
+                            sc,
+                            tooltipped,
+                            negated,
+                            max_sev,
+                        );
+                        return side_effects;
+                    }
                     #[cfg(feature = "imperator")]
                     if let Some((inscopes, trigger)) = scope_trigger(part, data) {
                         // If a trigger of the same name exists, and it's compatible with this
@@ -591,6 +614,16 @@ pub fn validate_trigger_rhs(
 ) -> bool {
     let mut side_effects = false;
 
+    #[cfg(feature = "ck3")]
+    if Game::is_ck3() && sc.scopes(data) == Scopes::DateValue {
+        sc.close();
+        if let Some(token) = bv.expect_value() {
+            if Date::from_str(token.as_str()).is_err() {
+                validate_target_ok_this(token, data, sc, Scopes::DateValue);
+            }
+        }
+        return false;
+    }
     if !matches!(cmp, Comparator::Equals(Single | Question)) {
         // At this point we don't know whether to expect a script value or a target at the
         // right-hand side. Check for target first; a target can be a script value so that
@@ -833,7 +866,7 @@ fn match_trigger_bv(
                 warn(ErrorKey::Validation).msg(msg).loc(token).push();
             }
         }
-        #[cfg(any(feature = "vic3", feature = "eu5"))]
+        #[cfg(any(feature = "ck3", feature = "vic3", feature = "eu5"))]
         Trigger::CompareChoiceOrNumber(choices) => {
             must_be_eq = false;
             if let Some(token) = bv.expect_value()
@@ -980,7 +1013,21 @@ fn match_trigger_bv(
                         // exists = flag:$REASON$ is used in vanilla just to shut up their error.log,
                         // so accept it silently even though it's a no-op.
                     } else {
-                        validate_target_ok_this(token, data, sc, Scopes::all_but_none());
+                        // A chained existence probe tests the leading scope too.
+                        // A negative probe must not establish that name afterward.
+                        let probe = |target_sc: &mut ScopeContext| {
+                        if let Some((first, _)) = token.split_once('.') {
+                            if let Some((prefix, name)) = first.split_once(':') {
+                                if prefix.lowercase_is("scope") {
+                                    target_sc.exists_scope(name.as_str(), &first);
+                                } else if prefix.lowercase_is("local_var") {
+                                    target_sc.exists_local(name.as_str(), &first);
+                                }
+                            }
+                        }
+                        validate_target_ok_this(token, data, target_sc, Scopes::all_but_none());
+                        };
+                        if negated { sc.isolated(probe); } else { probe(sc); }
 
                         if tooltipped.is_tooltipped()
                             && let Some(firstpart) = token.as_str().strip_suffix(".holder")
@@ -1746,6 +1793,15 @@ fn validate_argument_internal(
         ArgumentValue::Identifier(kind) => {
             validate_identifier(arg, kind, Severity::Error);
         }
+        #[cfg(feature = "ck3")]
+        ArgumentValue::Choice(choices) => {
+            if !choices.contains(&arg.as_str()) {
+                warn(ErrorKey::Validation)
+                    .msg(format!("expected one of {}", choices.join(", ")))
+                    .loc(arg)
+                    .push();
+            }
+        }
         ArgumentValue::UncheckedValue => (),
         #[cfg(feature = "ck3")]
         ArgumentValue::Removed(version, info) => {
@@ -1769,12 +1825,12 @@ pub fn validate_argument_scope(
     validate_argument_internal(arg, validation, data, sc);
 
     if func.lowercase_is("scope") {
-        if part_flags.contains(PartFlags::Last | PartFlags::Question) {
+        if part_flags.contains(PartFlags::Question) {
             sc.exists_scope(arg.as_str(), part);
         }
         sc.replace_named_scope(arg.as_str(), part);
     } else if func.lowercase_is("local_var") {
-        if part_flags.contains(PartFlags::Last | PartFlags::Question) {
+        if part_flags.contains(PartFlags::Question) {
             sc.exists_local(arg.as_str(), part);
         }
         sc.replace_local_variable(arg.as_str(), part);
@@ -1925,7 +1981,7 @@ pub enum Trigger {
     #[cfg(any(feature = "ck3", feature = "vic3", feature = "eu5"))]
     CompareChoice(&'static [&'static str]),
     /// like `CompareChoice` but value can also be just a number
-    #[cfg(any(feature = "vic3", feature = "eu5"))]
+    #[cfg(any(feature = "ck3", feature = "vic3", feature = "eu5"))]
     CompareChoiceOrNumber(&'static [&'static str]),
     /// For Block, if a field name in the array starts with ? it means that field is optional
     /// trigger takes a block with these fields

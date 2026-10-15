@@ -11,6 +11,11 @@
 // LAST UPDATED CK3 VERSION 1.16.2.3
 // Taken from information in common/scripted_rules/00_rules.txt
 pub const SCRIPTED_RULES: &str = "
+	can_change_faith = {
+		tooltipped = yes
+		root = character
+	}
+
 	can_command_troops = {
 		tooltipped = no
 		root = character

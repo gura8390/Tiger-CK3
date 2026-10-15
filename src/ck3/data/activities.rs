@@ -428,6 +428,11 @@ impl DbKind for ActivityType {
                 vd.field_item("reference", Item::Entity);
             }
         });
+        vd.multi_field_validated_sc(
+            "header_background",
+            &mut ScopeContext::new(Scopes::Character, key),
+            crate::ck3::validate::validate_theme_header_background,
+        );
         vd.multi_field_validated_block("background", |block, data| {
             let mut vd = Validator::new(block, data);
             vd.field_trigger("trigger", Tooltipped::No, &mut sc);
@@ -569,6 +574,13 @@ fn validate_phase(key: &Token, block: &Block, data: &Everything, has_special_opt
     sc.define_name("host", Scopes::Character, key);
     vd.field_effect("on_enter_phase", Tooltipped::No, &mut sc);
     vd.field_effect("on_phase_active", Tooltipped::No, &mut sc);
+    vd.field_effect_builder("on_phase_active_activity", Tooltipped::No, |key| {
+        let mut sc = ScopeContext::new(Scopes::Activity, key);
+        sc.define_name("activity", Scopes::Activity, key);
+        sc.define_name("host", Scopes::Character, key);
+        sc.define_name("province", Scopes::Province, key);
+        sc
+    });
     vd.field_effect("on_end", Tooltipped::No, &mut sc);
     vd.field_effect("on_monthly_pulse", Tooltipped::No, &mut sc);
     vd.field_effect("on_weekly_pulse", Tooltipped::No, &mut sc);
@@ -690,6 +702,7 @@ impl GuestInviteRule {
 impl DbKind for GuestInviteRule {
     fn validate(&self, key: &Token, block: &Block, data: &Everything) {
         let mut vd = Validator::new(block, data);
+        vd.field_bool("locked");
         data.verify_exists(Item::Localization, key);
 
         vd.field_effect_builder("effect", Tooltipped::No, |key| {

@@ -232,6 +232,9 @@ fn validate_contributor_filter(block: &Block, data: &Everything) {
     vd.field_bool("top_liege");
     vd.field_bool("owner");
     vd.field_bool("allies");
+    for field in ["head_of_faith", "founder", "duchy", "clerical_region", "puppeteer", "councillor"] {
+        vd.field_bool(field);
+    }
 }
 
 fn validate_contribution(key: &Token, block: &Block, data: &Everything, gp_key: &Token) {

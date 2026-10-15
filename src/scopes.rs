@@ -109,6 +109,12 @@ bitflags! {
         #[cfg(feature = "ck3")] const TravelPlan = 1<<46;
         #[cfg(feature = "ck3")] const VassalContract = 1<<47;
         #[cfg(feature = "ck3")] const VassalObligationLevel = 1<<48;
+        // CK3 1.20
+        #[cfg(feature = "ck3")] const HolySite = 1<<77;
+        #[cfg(feature = "ck3")] const Rite = 1<<78;
+        #[cfg(feature = "ck3")] const Tenet = 1<<79;
+        #[cfg(feature = "ck3")] const Organization = 1<<80;
+        #[cfg(feature = "ck3")] const DateValue = 1<<81;
         // CK3 1.11
         #[cfg(feature = "ck3")] const HoldingType = 1<<49;
         #[cfg(feature = "ck3")] const TaxSlot = 1<<50;
@@ -377,12 +383,14 @@ bitflags! {
 // TODO: Scopes::all() returns a too-large set if multiple features are enabled.
 impl Scopes {
     pub const fn non_primitive() -> Scopes {
-        Scopes::all()
-            .difference(Scopes::None.union(Scopes::Value).union(Scopes::Bool).union(Scopes::Flag))
+        Scopes::all().difference(Scopes::None.union(Scopes::primitive()))
     }
 
     pub const fn primitive() -> Scopes {
-        Scopes::Value.union(Scopes::Bool).union(Scopes::Flag)
+        let primitive = Scopes::Value.union(Scopes::Bool).union(Scopes::Flag);
+        #[cfg(feature = "ck3")]
+        let primitive = primitive.union(Scopes::DateValue);
+        primitive
     }
 
     pub const fn all_but_none() -> Scopes {
@@ -469,6 +477,9 @@ pub enum ArgumentValue {
     /// The value consists of multiple arguments separated by `|`
     #[cfg(feature = "eu5")]
     Multiple(&'static [ArgumentValue]),
+    /// A finite set of literal arguments.
+    #[cfg(feature = "ck3")]
+    Choice(&'static [&'static str]),
     /// The value can be anything
     UncheckedValue,
     /// This trigger no longer exists. Arguments are version and explanation

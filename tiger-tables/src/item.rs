@@ -324,6 +324,14 @@ pub enum Item {
     #[cfg(feature = "ck3")] EventTransition,
     #[cfg(feature = "ck3")] Faction,
     #[cfg(feature = "ck3")] Faith,
+    #[cfg(feature = "ck3")] Tenet,
+    #[cfg(feature = "ck3")] ElectionCandidateSet,
+    #[cfg(feature = "ck3")] PuppetType,
+    #[cfg(feature = "ck3")] PuppetAction,
+    #[cfg(feature = "ck3")] PersonalTenetParameter,
+    #[cfg(feature = "ck3")] SpiritualFulfillmentType,
+    #[cfg(feature = "ck3")] FulfillmentParameter,
+    #[cfg(feature = "ck3")] Rite,
     #[cfg(feature = "ck3")] FaithIcon,
     #[cfg(feature = "ck3")] FervorModifier,
     #[cfg(feature = "ck3")] FlatMapStyle,
@@ -1161,7 +1169,7 @@ impl Item {
             #[cfg(any(feature = "ck3", feature = "vic3", feature = "imperator"))]
             Item::LawGroup => match Game::game() {
                 #[cfg(feature = "ck3")]
-                Game::Ck3 => "common/laws/",
+                Game::Ck3 => "common/law_groups/",
                 #[cfg(feature = "imperator")]
                 Game::Imperator => "common/laws/",
                 #[cfg(feature = "vic3")]
@@ -1427,7 +1435,23 @@ impl Item {
             #[cfg(feature = "ck3")]
             Item::Faction => "common/factions/",
             #[cfg(feature = "ck3")]
-            Item::Faith => "common/religion/religions/",
+            Item::Faith => "common/religion/faith_types/",
+            #[cfg(feature = "ck3")]
+            Item::Tenet => "common/religion/tenet_types/",
+            #[cfg(feature = "ck3")]
+            Item::ElectionCandidateSet => "common/succession_election/",
+            #[cfg(feature = "ck3")]
+            Item::PuppetType => "common/puppets/types/",
+            #[cfg(feature = "ck3")]
+            Item::PuppetAction => "common/puppets/actions/",
+            #[cfg(feature = "ck3")]
+            Item::PersonalTenetParameter => "common/religion/tenet_types/",
+            #[cfg(feature = "ck3")]
+            Item::SpiritualFulfillmentType => "common/spiritual_fulfillment/",
+            #[cfg(feature = "ck3")]
+            Item::FulfillmentParameter => "common/spiritual_fulfillment/",
+            #[cfg(feature = "ck3")]
+            Item::Rite => "common/religion/rite_types/",
             #[cfg(feature = "ck3")]
             Item::FaithIcon => "common/religion/religions/",
             #[cfg(feature = "ck3")]
@@ -1461,7 +1485,7 @@ impl Item {
             #[cfg(feature = "ck3")]
             Item::HoldingType => "common/holdings/",
             #[cfg(feature = "ck3")]
-            Item::HolySiteParameter => "common/religion/holy_sites/",
+            Item::HolySiteParameter => "common/religion/holy_site_types/",
             #[cfg(feature = "ck3")]
             Item::Hook => "common/hook_types/",
             #[cfg(feature = "ck3")]

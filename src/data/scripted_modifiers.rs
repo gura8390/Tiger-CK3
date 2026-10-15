@@ -110,7 +110,7 @@ impl ScriptedModifier {
         if !self.cached_compat(key, &[], sc, data) {
             let mut our_sc = ScopeContext::new_unrooted(Scopes::all(), &self.key);
             our_sc.set_strict_scopes(false);
-            self.cache.insert(key, &[], Tooltipped::No, false, our_sc.clone());
+            self.cache.begin(key, &[], Tooltipped::No, false, our_sc.clone());
             let mut vd = Validator::new(&self.block, data);
             validate_modifiers(&mut vd, &mut our_sc);
             validate_scripted_modifier_calls(vd, data, &mut our_sc);
@@ -151,7 +151,7 @@ impl ScriptedModifier {
             our_sc.set_strict_scopes(false);
             // Insert the dummy sc before continuing. That way, if we recurse, we'll hit
             // that dummy context instead of macro-expanding again.
-            self.cache.insert(key, args, Tooltipped::No, false, our_sc.clone());
+            self.cache.begin(key, args, Tooltipped::No, false, our_sc.clone());
             let mut vd = Validator::new(&block, data);
             validate_modifiers(&mut vd, &mut our_sc);
             validate_scripted_modifier_calls(vd, data, &mut our_sc);

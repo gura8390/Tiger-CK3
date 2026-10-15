@@ -314,4 +314,9 @@
     ("VASSAL_CONTRACT_TYPE", Args::Args(&[]), Ck3(SubjectContractType)),
     ("VASSAL_STANCE", Args::Args(&[]), Ck3(VassalStance)),
     ("WAR", Args::Args(&[]), Ck3(War)),
+    // CK3 1.20.1: vanilla title window and religion GUI interfaces.
+    ("Rite", Args::Args(&[]), Ck3(Rite)),
+    ("TenetType", Args::Args(&[]), Ck3(TenetType)),
+    ("DecisionViewWidgetSelectBarony", Args::Args(&[]), Ck3(DecisionViewWidgetSelectBarony)),
+    ("DoctrineType", Args::Args(&[]), Ck3(DoctrineType)),
 ]

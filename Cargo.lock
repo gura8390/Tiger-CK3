@@ -301,7 +301,7 @@ dependencies = [
 
 [[package]]
 name = "ck3-tiger"
-version = "1.19.0"
+version = "1.19.0+local.ck3.1.20.1"
 dependencies = [
  "anyhow",
  "clap",

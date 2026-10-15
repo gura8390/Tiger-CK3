@@ -42,11 +42,138 @@ impl DbKind for Decision {
                     }
                 } else if controller.is("create_holy_order") {
                     sc.define_name("ruler", Scopes::Character, controller);
+                    sc.define_name("barony", Scopes::LandedTitle, controller);
                 } else if controller.is("revoke_holy_order_lease") {
                     sc.define_name("barony", Scopes::LandedTitle, controller);
                 }
             }
         }
+
+        vd.field_validated("widget", |bv, data| {
+            match bv {
+                BV::Value(value) => {
+                    let filename =
+                        format!("gui/decision_view_widgets/decision_view_widget_{value}.gui");
+                    data.verify_exists_implied(Item::File, &filename, value);
+                }
+                BV::Block(block) => {
+                    let mut vd = Validator::new(block, data);
+                    vd.field_validated_value("gui", |key, mut vd| {
+                        let filename = format!("gui/decision_view_widgets/{vd}.gui");
+                        data.verify_exists_implied(Item::File, &filename, key);
+                        vd.accept();
+                    });
+
+                    // CK3 1.20: explicit controllers from _decision_widget_controllers.info.
+                    vd.field_choice(
+                        "controller",
+                        &[
+                            "default",
+                            "decision_option_list_controller",
+                            "create_holy_order",
+                            "revoke_holy_order_lease", // undocumented
+                            "select_scope_object",
+                            "select_barony_title",
+                            "select_barony_title_in_realm",
+                            "select_county_title",
+                            "select_county_title_in_realm",
+                            "select_duchy_title",
+                            "select_duchy_title_in_realm",
+                            "select_kingdom_title",
+                            "select_kingdom_title_in_realm",
+                            "select_empire_title",
+                            "select_empire_title_in_realm",
+                            "select_hegemony_title",
+                            "select_hegemony_title_in_realm",
+                        ],
+                    );
+                    vd.field_bool("show_from_start");
+
+                    // Undocumented
+                    vd.field_item("decision_to_second_step_button", Item::Localization);
+
+                    match block.get_field_value("controller").map(Token::as_str) {
+                        Some("decision_option_list_controller") => {
+                            vd.multi_field_validated_block("item", |block, data| {
+                                let mut vd = Validator::new(block, data);
+                                vd.field_value("value");
+                                vd.field_trigger_rooted(
+                                    "is_shown",
+                                    Tooltipped::No,
+                                    Scopes::Character,
+                                );
+                                vd.field_trigger_rooted(
+                                    "is_valid",
+                                    Tooltipped::FailuresOnly,
+                                    Scopes::Character,
+                                );
+                                vd.field_validated_rooted(
+                                    "current_description",
+                                    Scopes::Character,
+                                    validate_desc,
+                                );
+                                vd.field_validated_rooted(
+                                    "localization",
+                                    Scopes::Character,
+                                    validate_desc,
+                                );
+                                vd.field_bool("is_default");
+                                vd.field_item("icon", Item::File);
+                                vd.field_bool("flat");
+
+                                vd.field_script_value_no_breakdown_rooted(
+                                    "ai_chance",
+                                    Scopes::Character,
+                                );
+                            });
+                        }
+                        Some(
+                            "create_holy_order"
+                            | "revoke_holy_order_lease"
+                            | "select_barony_title"
+                            | "select_barony_title_in_realm"
+                            | "select_county_title"
+                            | "select_county_title_in_realm"
+                            | "select_duchy_title"
+                            | "select_duchy_title_in_realm"
+                            | "select_kingdom_title"
+                            | "select_kingdom_title_in_realm"
+                            | "select_empire_title"
+                            | "select_empire_title_in_realm"
+                            | "select_hegemony_title"
+                            | "select_hegemony_title_in_realm",
+                        ) => {
+                            sc.define_name("title", Scopes::LandedTitle, key);
+                            sc.define_name("ruler", Scopes::Character, key);
+                            vd.field_trigger_builder("title_valid", Tooltipped::No, |key| {
+                                let mut sc = ScopeContext::new(Scopes::LandedTitle, key);
+                                sc.define_name("ruler", Scopes::Character, key);
+                                sc
+                            });
+                        }
+                        Some("select_scope_object") => {
+                            // Setup is rooted in None, with the decision actor explicitly named.
+                            let mut setup = ScopeContext::new(Scopes::None, key);
+                            setup.define_name("actor", Scopes::Character, key);
+                            vd.field_effect("setup_items", Tooltipped::No, &mut setup);
+                            let mut item_scope = setup.clone();
+                            item_scope.open_builder();
+                            item_scope.replace_list_entry(&Token::new("item_list", key.loc));
+                            let item_type = item_scope.scopes(data);
+                            item_scope.close();
+                            sc.define_name("selected_item", item_type, key);
+                            vd.field_effect("default_item", Tooltipped::No, &mut setup);
+                            vd.field_effect("ai_select_item", Tooltipped::No, &mut setup);
+                            let mut item = ScopeContext::new(item_type, key);
+                            item.define_name("actor", Scopes::Character, key);
+                            vd.field_trigger("is_item_valid", Tooltipped::No, &mut item);
+                            vd.field_script_value("ai_item_will_do", &mut item);
+                        }
+                        _ => (),
+                    }
+                }
+            }
+        });
 
         vd.req_field_warn("picture");
         vd.multi_field_validated_block("picture", |block, data| {
@@ -120,83 +247,6 @@ impl DbKind for Decision {
         vd.field_trigger("ai_potential", Tooltipped::No, &mut sc);
         vd.field_validated_block_sc("ai_will_do", &mut sc, validate_modifiers_with_base);
         vd.field_trigger("should_create_alert", Tooltipped::No, &mut sc);
-        vd.field_validated("widget", |bv, data| {
-            match bv {
-                BV::Value(value) => {
-                    let filename =
-                        format!("gui/decision_view_widgets/decision_view_widget_{value}.gui");
-                    data.verify_exists_implied(Item::File, &filename, value);
-                }
-                BV::Block(block) => {
-                    let mut vd = Validator::new(block, data);
-                    vd.field_validated_value("gui", |key, mut vd| {
-                        let filename = format!("gui/decision_view_widgets/{vd}.gui");
-                        data.verify_exists_implied(Item::File, &filename, key);
-                        vd.accept();
-                    });
-
-                    // LAST UPDATED CK3 VERSION 1.12.3
-                    vd.field_choice(
-                        "controller",
-                        &[
-                            "default",
-                            "decision_option_list_controller",
-                            "create_holy_order",
-                            "revoke_holy_order_lease", // undocumented
-                        ],
-                    );
-                    vd.field_bool("show_from_start");
-
-                    // Undocumented
-                    vd.field_item("decision_to_second_step_button", Item::Localization);
-
-                    match block.get_field_value("controller").map(Token::as_str) {
-                        Some("decision_option_list_controller") => {
-                            vd.multi_field_validated_block("item", |block, data| {
-                                let mut vd = Validator::new(block, data);
-                                vd.field_value("value");
-                                vd.field_trigger_rooted(
-                                    "is_shown",
-                                    Tooltipped::No,
-                                    Scopes::Character,
-                                );
-                                vd.field_trigger_rooted(
-                                    "is_valid",
-                                    Tooltipped::FailuresOnly,
-                                    Scopes::Character,
-                                );
-                                vd.field_validated_rooted(
-                                    "current_description",
-                                    Scopes::Character,
-                                    validate_desc,
-                                );
-                                vd.field_validated_rooted(
-                                    "localization",
-                                    Scopes::Character,
-                                    validate_desc,
-                                );
-                                vd.field_bool("is_default");
-                                vd.field_item("icon", Item::File);
-                                vd.field_bool("flat");
-
-                                vd.field_script_value_no_breakdown_rooted(
-                                    "ai_chance",
-                                    Scopes::Character,
-                                );
-                            });
-                        }
-                        Some("create_holy_order" | "revoke_holy_order_lease") => {
-                            vd.field_trigger_builder("barony_valid", Tooltipped::No, |key| {
-                                let mut sc = ScopeContext::new(Scopes::LandedTitle, key);
-                                sc.define_name("ruler", Scopes::Character, key);
-                                sc
-                            });
-                        }
-                        _ => (),
-                    }
-                }
-            }
-        });
     }
 }
 

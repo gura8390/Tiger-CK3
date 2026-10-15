@@ -452,6 +452,19 @@ static MODIF_MAP: LazyLock<TigerHashMap<Lowercase<'static>, ModifKinds>> = LazyL
 /// See `modifiers.log` from the game data dumps.
 /// A `modif` is my name for the things that modifiers modify.
 const MODIF_TABLE: &[(&str, ModifKinds)] = &[
+    ("merit_standalone_loss_mult", ModifKinds::Character),
+    ("merit_standalone_gain_mult", ModifKinds::Character),
+    ("influence_standalone_loss_mult", ModifKinds::Character),
+    ("influence_standalone_gain_mult", ModifKinds::Character),
+    ("monthly_treasury_from_cardinal_budget_base", ModifKinds::Character),
+    ("treasury_cardinal_budget_allocation", ModifKinds::Character),
+    ("character_spiritual_fulfillment_gain_mult", ModifKinds::Character),
+    ("character_spiritual_fulfillment_loss_mult", ModifKinds::Character),
+    ("piety_standalone_gain_mult", ModifKinds::Character),
+    ("piety_standalone_loss_mult", ModifKinds::Character),
+    ("prestige_standalone_gain_mult", ModifKinds::Character),
+    ("prestige_standalone_loss_mult", ModifKinds::Character),
+    ("rite_creation_piety_cost_mult", ModifKinds::Character),
     ("accolade_glory_gain_mult", ModifKinds::Character),
     ("accolades", ModifKinds::Character),
     (

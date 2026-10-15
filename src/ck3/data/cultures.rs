@@ -177,6 +177,9 @@ impl CulturePillar {
 impl DbKind for CulturePillar {
     fn add_subitems(&self, key: &Token, block: &Block, db: &mut Db) {
         if let Some(block) = block.get_field_block("parameters") {
+            for key in block.iter_values() {
+                db.add_flag(Item::CultureParameter, key.clone());
+            }
             for (key, value) in block.iter_assignments() {
                 if value.is("yes") {
                     db.add_flag(Item::CultureParameter, key.clone());
@@ -263,6 +266,9 @@ impl CultureTradition {
 impl DbKind for CultureTradition {
     fn add_subitems(&self, _key: &Token, block: &Block, db: &mut Db) {
         if let Some(block) = block.get_field_block("parameters") {
+            for key in block.iter_values() {
+                db.add_flag(Item::CultureParameter, key.clone());
+            }
             for (key, value) in block.iter_assignments() {
                 if value.is("yes") {
                     db.add_flag(Item::CultureParameter, key.clone());
@@ -333,6 +339,23 @@ impl DbKind for CultureTradition {
             sc
         });
         validate_modifiers(&mut vd);
+        vd.field_validated_block("partners", |block, data| {
+            let mut vd = Validator::new(block, data);
+            vd.field_integer("number_of_spouses");
+            vd.field_integer("number_of_consorts");
+            vd.field_validated_block("number_of_consorts_by_tier", |block, data| {
+                let mut vd = Validator::new(block, data);
+                for tier in ["barony", "county", "duchy", "kingdom", "empire", "hegemony"] {
+                    vd.field_integer(tier);
+                }
+            });
+        });
+        vd.multi_field_validated_block("faith_character_modifier", |block, data| {
+            let mut vd = Validator::new(block, data);
+            vd.field_item("doctrine", Item::Doctrine);
+            vd.field_item("name", Item::Localization);
+            validate_modifs(block, data, ModifKinds::Character, vd);
+        });
         vd.multi_field_validated_block("doctrine_character_modifier", |block, data| {
             let mut vd = Validator::new(block, data);
             vd.field_item("doctrine", Item::Doctrine);
@@ -368,6 +391,10 @@ const INTEGER_PARAMETERS: &[&str] = &[
 
 fn validate_parameters(block: &Block, data: &Everything) {
     let mut vd = Validator::new(block, data);
+    for key in vd.values() {
+        let loca = format!("culture_parameter_{}", key.as_str().to_ascii_lowercase());
+        data.verify_exists_implied(Item::Localization, &loca, key);
+    }
     vd.unknown_value_fields(|key, value| {
         if INTEGER_PARAMETERS.contains(&key.as_str()) {
             ValueValidator::new(value, data).integer_range(0..);

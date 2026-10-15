@@ -10,7 +10,7 @@ use crate::report::{ErrorKey, err, fatal};
 use crate::scopes::Scopes;
 use crate::tooltipped::Tooltipped;
 use crate::trigger::{validate_target, validate_target_ok_this};
-use crate::validate::{validate_modifiers_with_base, validate_scope_chain};
+use crate::validate::validate_scope_chain;
 use crate::validator::Validator;
 
 pub fn validate_theme_background(bv: &BV, data: &Everything, sc: &mut ScopeContext) {
@@ -235,7 +235,7 @@ pub fn validate_random_traits_list(block: &Block, data: &Everything, sc: &mut Sc
     vd.unknown_block_fields(|key, block| {
         data.verify_exists(Item::Trait, key);
         let mut vd = Validator::new(block, data);
-        vd.field_validated_block_sc("weight", sc, validate_modifiers_with_base);
+        vd.field_validated_sc("weight", sc, crate::validate::validate_ai_chance);
         vd.field_trigger("trigger", Tooltipped::No, sc);
     });
 }
@@ -245,7 +245,7 @@ pub fn validate_random_culture(block: &Block, data: &Everything, sc: &mut ScopeC
     vd.unknown_block_fields(|key, block| {
         validate_target(key, data, sc, Scopes::Culture);
         let mut vd = Validator::new(block, data);
-        vd.field_validated_block_sc("weight", sc, validate_modifiers_with_base);
+        vd.field_validated_sc("weight", sc, crate::validate::validate_ai_chance);
         vd.field_trigger("trigger", Tooltipped::No, sc);
     });
 }
@@ -255,7 +255,7 @@ pub fn validate_random_faith(block: &Block, data: &Everything, sc: &mut ScopeCon
     vd.unknown_block_fields(|key, block| {
         validate_target(key, data, sc, Scopes::Faith);
         let mut vd = Validator::new(block, data);
-        vd.field_validated_block_sc("weight", sc, validate_modifiers_with_base);
+        vd.field_validated_sc("weight", sc, crate::validate::validate_ai_chance);
         vd.field_trigger("trigger", Tooltipped::No, sc);
     });
 }

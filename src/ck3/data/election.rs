@@ -25,6 +25,15 @@ impl Election {
 }
 
 impl DbKind for Election {
+    fn add_subitems(&self, _key: &Token, block: &Block, db: &mut Db) {
+        if let Some(candidates) = block.get_field_block("candidates")
+            && let Some(sets) = candidates.get_field_block("character_sets")
+        {
+            for (key, _) in sets.iter_definitions() {
+                db.add_flag(Item::ElectionCandidateSet, key.clone());
+            }
+        }
+    }
     fn validate(&self, key: &Token, block: &Block, data: &Everything) {
         let loca = format!("{key}_candidates");
         data.verify_exists_implied(Item::Localization, &loca, key);
@@ -54,9 +63,12 @@ impl DbKind for Election {
 
         vd.field_validated_block_sc("elector_vote_strength", &mut sc, validate_modifiers_with_base);
 
+        vd.field_script_value("elector_vote_strength_value", &mut sc);
+
         sc.define_name("candidate", Scopes::Character, key);
         sc.define_name("holder_candidate", Scopes::Character, key);
         vd.field_validated_block_sc("candidate_score", &mut sc, validate_modifiers_with_base);
+        vd.field_script_value("candidate_score_value", &mut sc);
     }
 }
 
@@ -74,6 +86,21 @@ fn validate_candidates(vd: &mut Validator, sc: &mut ScopeContext) {
             vd.field_trigger("limit", Tooltipped::No, sc);
         }
     });
+    vd.field_validated_block("character_sets", |block, data| {
+        let mut vd = Validator::new(block, data);
+        vd.unknown_block_fields(|_key, block| {
+            let mut vd = Validator::new(block, data);
+            vd.req_field("type");
+            vd.field_choice("type", CANDIDATE_TYPES);
+            vd.field_trigger("limit", Tooltipped::No, sc);
+            vd.field_script_value("priority_value", sc);
+        });
+    });
+    vd.field_choice(
+        "candidate_policy",
+        &["include_all_candidates", "only_best_candidate", "one_candidate_per_set"],
+    );
+    vd.field_script_value("priority_value", sc);
     vd.field_trigger("limit", Tooltipped::No, sc);
 }
 
@@ -88,4 +115,5 @@ const CANDIDATE_TYPES: &[&str] = &[
     "holder_dynasty",
     "holder_council_members",
     "holder_tributaries",
+    "same_faith_clerical_electors",
 ];

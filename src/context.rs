@@ -36,6 +36,7 @@ pub struct ScopeContext {
     /// Names of named scopes; the values are indices into the `named` vector.
     scope_names: TigerHashMap<&'static str, (usize, Temporary)>,
     /// Names of named lists; the values are indices into the `named` vector.
+    forward_lists: Vec<Vec<Token>>,
     scope_list_names: TigerHashMap<&'static str, (usize, Temporary)>,
     /// Names of local variables; the values are indices into the `named` vector.
     local_names: TigerHashMap<&'static str, usize>,
@@ -178,6 +179,10 @@ pub struct StashedBuilder {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Signature {
     root: Scopes,
+    // A non-strict vanilla traversal must not consume a strict mod traversal,
+    // nor another entry point's diagnostic traceback, during parallel analysis.
+    source: crate::token::Loc,
+    strict_scopes: bool,
     // these are all sorted
     scope_names: Vec<(&'static str, Scopes)>,
     scope_list_names: Vec<(&'static str, Scopes)>,
@@ -238,6 +243,17 @@ impl ScopeEntry {
 }
 
 impl ScopeContext {
+    /// Validate a guarded probe without exporting its existence assumptions.
+    /// A probe can start inside a scope-chain builder; unwind that copied stack
+    /// before dropping it, while still checking that validation balanced it.
+    pub fn isolated<F: FnOnce(&mut Self)>(&self, f: F) {
+        let mut probe = self.clone();
+        let depth = probe.scope_stack.len();
+        f(&mut probe);
+        assert_eq!(probe.scope_stack.len(), depth, "probe scope chain not properly unwound");
+        probe.destroy();
+    }
+
     /// Make a new `ScopeContext`, with `this` and `root` the same, and `root` of the given scope
     /// types. `token` is used when reporting errors about the use of `root`.
     pub fn new<T: Into<Token>>(root: Scopes, token: T) -> Self {
@@ -249,6 +265,7 @@ impl ScopeContext {
             from: Vec::new(),
             scope_names: TigerHashMap::default(),
             scope_list_names: TigerHashMap::default(),
+            forward_lists: Vec::new(),
             local_names: TigerHashMap::default(),
             local_list_names: TigerHashMap::default(),
             named: Vec::new(),
@@ -277,6 +294,7 @@ impl ScopeContext {
             from: Vec::new(),
             scope_names: TigerHashMap::default(),
             scope_list_names: TigerHashMap::default(),
+            forward_lists: Vec::new(),
             local_names: TigerHashMap::default(),
             local_list_names: TigerHashMap::default(),
             named: Vec::new(),
@@ -659,6 +677,17 @@ impl ScopeContext {
         }
     }
 
+    pub fn begin_list_forward(&mut self) { self.forward_lists.push(Vec::new()); }
+
+    pub fn finish_list_forward(&mut self) {
+        for name in self.forward_lists.pop().unwrap_or_default() {
+            if let Some((idx, _)) = self.scope_list_names.get(name.as_str())
+                && self.is_input[*idx].is_some() {
+                err(ErrorKey::UnknownList).weak().msg("unknown list; iterator has no matching construction entry").loc(&name).push();
+            }
+        }
+    }
+
     /// Expect list `name` to be known and (with strict scopes) warn if it isn't.
     /// Narrow the type of `this` down to the list's type.
     pub fn expect_list(&mut self, name: &Token, data: &Everything) {
@@ -672,8 +701,16 @@ impl ScopeContext {
                 self.expect3(s, &reason, name, THIS, "list", data);
             }
         } else if self.strict_scopes {
-            let msg = "unknown list";
-            err(ErrorKey::UnknownList).weak().msg(msg).loc(name).push();
+            if !self.forward_lists.is_empty() {
+                let idx = self.named.len();
+                let (scope, reason) = self.scopes_reason(data);
+                self.named.push(ScopeEntry::Scope(scope, reason.clone()));
+                self.is_input.push(Some(name.clone()));
+                self.scope_list_names.insert(name.as_str(), (idx, Temporary::No));
+                self.forward_lists.last_mut().unwrap().push(name.clone());
+            } else {
+                err(ErrorKey::UnknownList).weak().msg("unknown list").loc(name).push();
+            }
         }
     }
 
@@ -792,6 +829,8 @@ impl ScopeContext {
 
         Signature {
             root,
+            source: self.source.loc,
+            strict_scopes: self.strict_scopes,
             scope_names: process_scope_names(self, &self.scope_names, data),
             scope_list_names: process_scope_names(self, &self.scope_list_names, data),
             local_names: process_local_names(self, &self.local_names, data),

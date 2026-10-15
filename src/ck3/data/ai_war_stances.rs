@@ -3,28 +3,15 @@ use crate::db::{Db, DbKind};
 use crate::everything::Everything;
 use crate::game::GameFlags;
 use crate::item::{Item, ItemLoader};
-use crate::report::{ErrorKey, err};
+
 use crate::scopes::Scopes;
 use crate::token::Token;
 use crate::tooltipped::Tooltipped;
 use crate::validator::Validator;
 
-// LAST UPDATED CK3 VERSION 1.11.5
-// Taken from common/ai_war_stances/_ai_war_stances.info
-//
-// TODO: find a way to warn if any of these are missing.
-// The main problem is we have no Loc to attach the warning to.
-const AI_WAR_STANCES: &[&str] = &[
-    "attacker_offensive",
-    "attacker_defensive",
-    "defender_offensive",
-    "defender_defensive",
-    "defender_desperate",
-    "great_holy_war_attacker",
-    "great_holy_war_defender",
-];
+// War stance keys are database definitions. Validate the body, not a vanilla-name whitelist.
 
-// LAST UPDATED CK3 VERSION 1.11.5
+// LAST UPDATED CK3 VERSION 1.20.0.4
 // Taken from common/ai_war_stances/_ai_war_stances.info
 const AI_WAR_OBJECTIVES: &[&str] = &[
     "wargoal_province",
@@ -64,11 +51,8 @@ impl DbKind for AiWarStance {
     fn validate(&self, key: &Token, block: &Block, data: &Everything) {
         let mut vd = Validator::new(block, data);
 
-        if !AI_WAR_STANCES.contains(&key.as_str()) {
-            let msg = format!("unknown war stance `{key}`");
-            err(ErrorKey::Validation).msg(msg).loc(key).push();
-        }
-
+        let _ = key;
+        vd.req_field("side");
         vd.field_choice("side", &["attacker", "defender"]);
         vd.field_integer_range("enemy_unit_priority", 1..=1000);
 

@@ -268,6 +268,12 @@ fn validate_modifiers(vd: &mut Validator, is_duchy_capital: bool) {
         vd.field_item("parameter", Item::DoctrineParameter);
         validate_modifs(block, data, ModifKinds::Province, vd);
     });
+    vd.multi_field_validated_block("province_rite_modifier", |block, data| {
+        let mut vd = Validator::new(block, data);
+        vd.req_field("parameter");
+        vd.field_item("parameter", Item::DoctrineParameter);
+        validate_modifs(block, data, ModifKinds::Province, vd);
+    });
     vd.multi_field_validated_block("province_terrain_modifier", |block, data| {
         let mut vd = Validator::new(block, data);
         vd.field_item("parameter", Item::CultureParameter);
@@ -298,6 +304,12 @@ fn validate_modifiers(vd: &mut Validator, is_duchy_capital: bool) {
         vd.field_item("parameter", Item::DoctrineParameter);
         validate_modifs(block, data, ModifKinds::County, vd);
     });
+    vd.multi_field_validated_block("county_rite_modifier", |block, data| {
+        let mut vd = Validator::new(block, data);
+        vd.req_field("parameter");
+        vd.field_item("parameter", Item::DoctrineParameter);
+        validate_modifs(block, data, ModifKinds::County, vd);
+    });
 
     if is_duchy_capital {
         vd.multi_field_validated_block("duchy_capital_county_modifier", |block, data| {
@@ -311,6 +323,12 @@ fn validate_modifiers(vd: &mut Validator, is_duchy_capital: bool) {
             validate_modifs(block, data, ModifKinds::County, vd);
         });
         vd.multi_field_validated_block("duchy_capital_county_faith_modifier", |block, data| {
+            let mut vd = Validator::new(block, data);
+            vd.req_field("parameter");
+            vd.field_item("parameter", Item::DoctrineParameter);
+            validate_modifs(block, data, ModifKinds::County, vd);
+        });
+        vd.multi_field_validated_block("duchy_capital_county_rite_modifier", |block, data| {
             let mut vd = Validator::new(block, data);
             vd.req_field("parameter");
             vd.field_item("parameter", Item::DoctrineParameter);

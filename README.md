@@ -1,3 +1,12 @@
+# Tiger CK3 — CK3 1.20.1 adaptation
+
+An independently maintained CK3 1.20.1 adaptation of [amtep/tiger](https://github.com/amtep/tiger), preserving its Git history. Licensed under GPL-3.0-or-later; see [LICENSE](LICENSE).
+
+Build the CK3 command-line validator with `cargo build --release -p ck3-tiger --locked`. Local adaptation checks do not constitute in-game or save-game acceptance.
+
+The upstream usage and development documentation follows below.
+
+---
 # ![Tiger Banner](banner.png)
 
 [![GitHub Release](https://img.shields.io/github/v/release/amtep/tiger)](https://github.com/amtep/tiger/releases)

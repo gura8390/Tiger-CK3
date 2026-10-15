@@ -17,11 +17,13 @@ use crate::token::Token;
 #[derive(Clone, Debug, Default)]
 pub struct Defines {
     defines: TigerHashMap<String, Define>,
+    government_registrations: Vec<Token>,
 }
 
 impl Defines {
     pub fn load_item(&mut self, group: Token, name: Token, bv: &BV) {
         let key = format!("{}|{}", &group, &name);
+        if key == "NGovernment|GOVERNMENT_TYPES" { self.government_registrations.push(name.clone()); }
         if let Some(other) = self.defines.get(&key)
             && other.name.loc.kind >= name.loc.kind
             && !bv.equivalent(&other.bv)
@@ -40,9 +42,29 @@ impl Defines {
         self.defines.values().map(|item| &item.name)
     }
 
+    pub fn government_registration(&self) -> Option<(&Token, &Block)> {
+        self.defines.get("NGovernment|GOVERNMENT_TYPES").and_then(|d| match &d.bv {
+            BV::Block(b) => Some((&d.name, b)), _ => None,
+        })
+    }
+
+    pub fn government_registration_sources(&self) -> String {
+        self.government_registrations.iter().map(|t| t.loc.fullpath().display().to_string()).collect::<Vec<_>>().join(" -> ")
+    }
+
     pub fn validate(&self, data: &Everything) {
         for item in self.defines.values() {
             item.validate(data);
+        }
+        #[cfg(feature = "ck3")]
+        if let Some((key, block)) = self.government_registration() {
+            let mut seen = std::collections::HashSet::new();
+            for token in block.iter_values() {
+                if !seen.insert(token.as_str()) {
+                    err(ErrorKey::GovernmentRegistration).msg(format!("duplicate government registration `{token}`"))
+                        .info(self.government_registration_sources()).loc(token).loc_msg(key,"final registration list").push();
+                }
+            }
         }
     }
 

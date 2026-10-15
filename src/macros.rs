@@ -21,15 +21,18 @@ struct MacroKey {
 
 impl MacroKey {
     pub fn new(
-        mut loc: Loc,
+        loc: Loc,
         args: &[(&'static str, Token)],
         tooltipped: Tooltipped,
         negated: bool,
     ) -> Self {
-        loc.link_idx = None;
         let mut args: Vec<_> = args.iter().map(|(parm, arg)| (*parm, arg.as_str())).collect();
         args.sort_unstable();
         Self { loc, args, tooltipped, negated }
+    }
+    fn recursion_key(mut self) -> (std::thread::ThreadId, Self) {
+        self.loc.link_idx = None;
+        (std::thread::current().id(), self)
     }
 }
 
@@ -40,6 +43,7 @@ impl MacroKey {
 /// The cache helps avoid needless re-expansions for arguments that have already been validated.
 pub struct MacroCache<T> {
     cache: RwLock<TigerHashMap<MacroKey, T>>,
+    pending: RwLock<TigerHashMap<(std::thread::ThreadId, MacroKey), T>>,
 }
 
 impl<T> MacroCache<T> {
@@ -52,6 +56,10 @@ impl<T> MacroCache<T> {
         mut f: F,
     ) -> bool {
         let key = MacroKey::new(key.loc, args, tooltipped, negated);
+        if let Some(x) = self.pending.read().unwrap().get(&key.clone().recursion_key()) {
+            f(x);
+            return true;
+        }
         if let Some(x) = self.cache.read().unwrap().get(&key) {
             f(x);
             true
@@ -69,13 +77,20 @@ impl<T> MacroCache<T> {
         value: T,
     ) {
         let key = MacroKey::new(key.loc, args, tooltipped, negated);
+        self.pending.write().unwrap().remove(&key.clone().recursion_key());
         self.cache.write().unwrap().insert(key, value);
+    }
+    /// Recursion sentinels belong to their worker; only completed results are
+    /// shared. Completed keys retain the expansion call site for diagnostics.
+    pub fn begin(&self, key: &Token, args: &[(&'static str, Token)], tooltipped: Tooltipped, negated: bool, value: T) {
+        let key = MacroKey::new(key.loc, args, tooltipped, negated).recursion_key();
+        self.pending.write().unwrap().insert(key, value);
     }
 }
 
 impl<T> Default for MacroCache<T> {
     fn default() -> Self {
-        MacroCache { cache: RwLock::new(TigerHashMap::default()) }
+        MacroCache { cache: RwLock::new(TigerHashMap::default()), pending: RwLock::new(TigerHashMap::default()) }
     }
 }
 
@@ -143,3 +158,24 @@ impl MacroMap {
 /// Type-safety wrapper.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MacroMapIndex(NonZeroU32);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fileset::{FileKind, FileStage};
+    #[test]
+    fn incomplete_expansion_is_not_visible_to_another_worker() {
+        let loc = Loc::for_file("cache-test.txt".into(), FileStage::NoStage, FileKind::Mod, "cache-test.txt".into());
+        let key = Token::from_static_str("effect", loc);
+        let cache = MacroCache::default();
+        cache.begin(&key, &[], Tooltipped::No, false, 0);
+        std::thread::scope(|s| {
+            s.spawn(|| {
+                assert!(!cache.perform(&key, &[], Tooltipped::No, false, |_| panic!("read another worker's provisional result")));
+                cache.insert(&key, &[], Tooltipped::No, false, 42);
+                assert!(cache.perform(&key, &[], Tooltipped::No, false, |value| assert_eq!(*value, 42)));
+            }).join().unwrap();
+        });
+        assert!(cache.perform(&key, &[], Tooltipped::No, false, |value| assert_eq!(*value, 0)));
+    }
+}

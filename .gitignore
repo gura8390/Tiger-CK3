@@ -38,3 +38,27 @@ herrmod2
 htest.sh
 htestmod.sh
 
+
+# Local CK3 development assets (kept on this computer).
+/dist/
+/releases/
+/legacy/
+/verification/
+/local/binutils/
+/local/python-libs/
+/local/upstream-backup/
+/local/binutils.tar
+/local/binutils.tar.zst
+/local/*.log
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+
+# Machine-specific reports, work notes, and maintenance scripts.
+/docs/
+/local/
+/LOCAL-CK3-120.md
+/IDEAS.md
+/TODO.md

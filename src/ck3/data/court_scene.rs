@@ -112,6 +112,7 @@ impl DbKind for CourtSceneSetting {
 
         vd.field_value("name");
         vd.field_item("culture", Item::CourtSceneCulture);
+        vd.field_item("requires_dlc_flag", Item::DlcFeature);
         vd.field_integer("visual_culture_level");
         vd.field_item("cubemap", Item::File);
         vd.field_item("environment", Item::File);

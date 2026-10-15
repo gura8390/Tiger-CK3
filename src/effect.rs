@@ -100,6 +100,7 @@ pub fn validate_effect_internal(
     special_tokens: &mut SpecialTokens,
 ) -> bool {
     vd.set_case_sensitive(false);
+    if list_type != ListType::None && Game::is_ck3() { sc.begin_list_forward(); }
     if caller == "if"
         || caller == "else_if"
         || caller == "else"
@@ -139,6 +140,7 @@ pub fn validate_effect_internal(
         has_tooltip |=
             validate_effect_field(caller, key, cmp, bv, data, sc, tooltipped, special_tokens);
     });
+    if list_type != ListType::None && Game::is_ck3() { sc.finish_list_forward(); }
     has_tooltip
 }
 

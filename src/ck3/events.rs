@@ -129,6 +129,8 @@ pub fn validate_event(event: &Event, data: &Everything, sc: &mut ScopeContext) {
     } else {
         vd.multi_field_validated_sc("override_background", sc, validate_theme_background);
     }
+    vd.field_item("queue_icon", Item::File);
+    vd.field_localization("queue_name", sc);
     vd.multi_field_validated_sc("override_icon", sc, validate_theme_icon);
     vd.multi_field_validated_sc("override_header_background", sc, validate_theme_header_background);
     vd.multi_field_validated_block_sc("override_sound", sc, validate_theme_sound);
@@ -258,8 +260,12 @@ fn validate_court_scene(block: &Block, data: &Everything, sc: &mut ScopeContext)
 }
 
 fn validate_artifact(block: &Block, data: &Everything, sc: &mut ScopeContext) {
+    // The slot's trigger guards its target. Keep these assumptions local so
+    // another slot or an option cannot use the name without its own guard.
+    sc.isolated(|sc| {
     let mut vd = Validator::new(block, data);
 
+    vd.field_trigger("trigger", Tooltipped::No, sc);
     vd.req_field("target");
     vd.req_field("position");
     vd.field_target("target", sc, Scopes::Artifact);
@@ -267,7 +273,7 @@ fn validate_artifact(block: &Block, data: &Everything, sc: &mut ScopeContext) {
         "position",
         &["lower_left_portrait", "lower_center_portrait", "lower_right_portrait"],
     );
-    vd.field_trigger("trigger", Tooltipped::No, sc);
+    });
 }
 
 fn validate_animations(vd: &mut Validator) {

@@ -69,7 +69,7 @@ impl FileHandler<Block> for CharacterInteractionCategories {
     }
 
     fn finalize(&mut self) {
-        let mut taken = vec![None; self.categories.len()];
+        let mut taken: Vec<Option<&Token>> = vec![None; self.categories.len()];
         for item in self.categories.values() {
             if let Some(index) = item.index {
                 if index >= 0 {
@@ -77,7 +77,8 @@ impl FileHandler<Block> for CharacterInteractionCategories {
                     if index < taken.len() {
                         if let Some(other) = taken[index] {
                             let msg = format!("index duplicates the index of {other}");
-                            err(ErrorKey::DuplicateItem).msg(msg).loc(&item.key).push();
+                            let (primary,secondary)=if item.key.loc.kind >= other.loc.kind { (&item.key,other) } else { (other,&item.key) };
+                            err(ErrorKey::DuplicateItem).msg(msg).loc(primary).loc_msg(secondary,"same interaction category index").push();
                         } else {
                             taken[index] = Some(&item.key);
                         }
@@ -110,9 +111,11 @@ impl Category {
         vd.req_field("index");
         vd.req_field("desc");
         vd.field_integer("index");
+        vd.field_icon("icon", "NGameIcons|CHARACTER_INTERACTION_CATEGORY_ICON_PATH", ".dds");
         vd.field_item("desc", Item::Localization);
         vd.field_bool("default");
         vd.field_bool("favorite_interactions");
         vd.field_validated_block("color", validate_color);
     }
 }
+

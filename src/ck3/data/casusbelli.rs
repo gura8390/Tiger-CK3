@@ -30,6 +30,7 @@ impl DbKind for CasusBelli {
         data.verify_exists(Item::Localization, key);
 
         let mut vd = Validator::new(block, data);
+        vd.field_list_items("same_faith_defenders_allowed_parameter", Item::GovernmentFlag);
         let has_claimant = block.has_key("is_allowed_claim_title");
 
         let sc_builder = |key: &Token| {

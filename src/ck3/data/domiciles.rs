@@ -71,6 +71,7 @@ impl DbKind for DomicileType {
             },
         );
         vd.field_integer("base_external_slots");
+        vd.field_value("construction_soundeffect");
         vd.field_validated_block("domicile_building_slots", |block, data| {
             let mut vd = Validator::new(block, data);
             vd.unknown_block_fields(|key, block| {

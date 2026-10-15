@@ -118,6 +118,7 @@ impl ProvinceHistory {
         vd.field_item("culture", Item::Culture);
         vd.field_item("religion", Item::Faith);
         vd.field_item("faith", Item::Faith);
+        vd.field_item("rite", Item::Rite);
         if let Some(token) = vd.field_value("holding")
             && !token.is("auto")
             && !token.is("none")

@@ -1,6 +1,8 @@
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Display, EnumString)]
 #[strum(use_phf)]
 pub enum Ck3Datatype {
+    Rite,
+    TenetType,
     AIUnitWatchWindow,
     AIWarCoordinatorWatchWindow,
     AIWatchWindow,
@@ -311,6 +313,8 @@ pub enum Ck3Datatype {
     DecisionGroupItem,
     DecisionGroupType,
     DecisionViewWidget,
+    DecisionViewWidgetSelectBarony,
+    DoctrineType,
     DecisionViewWidgetCreateHolyOrder,
     DecisionViewWidgetOptionList,
     DecisionsView,

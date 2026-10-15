@@ -369,6 +369,10 @@ impl Character {
                         data.verify_exists(Item::Faith, value);
                         return None;
                     }
+                    "rite" => {
+                        data.verify_exists(Item::Rite, value);
+                        return None;
+                    }
                     "culture" => {
                         data.verify_exists(Item::Culture, value);
                         return None;
@@ -449,7 +453,7 @@ impl Character {
                     vd.field_item("killer", Item::Character);
                     return Some((Death, key.clone()));
                 }
-                "effect" => {
+                "effect" | "effect_even_if_dead" => {
                     validate_effect(block, data, sc, Tooltipped::No);
                     return None;
                 }
@@ -574,6 +578,7 @@ impl Character {
 
         vd.field_item("dna", Item::Dna);
         vd.field_bool("female");
+        vd.field_bool("obscured");
         vd.field_integer("martial");
         vd.field_integer("prowess");
         vd.field_integer("diplomacy");
@@ -595,6 +600,7 @@ impl Character {
         // religion and faith both mean faith here
         vd.field_item("religion", Item::Faith);
         vd.field_item("faith", Item::Faith);
+        vd.field_item("rite", Item::Rite);
 
         vd.field_item("culture", Item::Culture);
 

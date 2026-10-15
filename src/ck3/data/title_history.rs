@@ -145,6 +145,7 @@ impl TitleHistory {
             }
         }
 
+        vd.field_item("clerical_region", Item::Region);
         if let Some(token) = vd.field_value("liege")
             && !token.is("0")
         {

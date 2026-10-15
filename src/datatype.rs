@@ -235,7 +235,9 @@ pub fn validate_datatypes(
     while i < codes.len() {
         #[cfg(any(feature = "ck3", feature = "vic3"))]
         if Game::is_ck3() || Game::is_vic3() {
-            while let Some(binding) = data.data_bindings.get(codes[i].name.as_str()) {
+            // Data-binding macros are global expressions. A member with the same
+            // name (Title.IsNomad, TopScope.GetScriptValueBreakdown) is native.
+            while let Some(binding) = data.data_bindings.get(codes[i].name.as_str()).filter(|_| i == 0) {
                 if let Some(replacement) = binding.replace(&codes[i]) {
                     macro_count += 1;
                     if macro_count > 255 {
