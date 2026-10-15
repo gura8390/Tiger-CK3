@@ -2,6 +2,13 @@
 
 An independently maintained CK3 1.20.1 adaptation of [amtep/tiger](https://github.com/amtep/tiger), preserving its Git history. Licensed under GPL-3.0-or-later; see [LICENSE](LICENSE).
 
+## Credits and thanks / 致谢
+
+Tiger was originally created by [@amtep](https://github.com/amtep). Thank you to @amtep and all [upstream contributors](CONTRIBUTORS.md) for creating and maintaining [Tiger](https://github.com/amtep/tiger), and for the time, expertise, and care invested in its validation tools. This CK3 1.20.1 adaptation builds on their work.
+
+感谢原作者 [@amtep](https://github.com/amtep) 及所有上游贡献者创建和持续维护 Tiger，感谢他们为模组检查工具投入的时间、专业知识与心血。本仓库在原项目基础上进行 CK3 1.20.1 适配，保留原有作者署名、贡献者记录及许可证。
+
+## Build
 Build the CK3 command-line validator with `cargo build --release -p ck3-tiger --locked`. Local adaptation checks do not constitute in-game or save-game acceptance.
 
 The upstream usage and development documentation follows below.
